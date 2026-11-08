@@ -2,111 +2,140 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>3D Multiplayer Metaverse</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>3D City Metaverse - Mobile & Online</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { overflow: hidden; font-family: system-ui, -apple-system, sans-serif; background: #000; }
-        #canvas-container { width: 100vw; height: 100vh; display: block; }
-        
-        #ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
-        
-        /* Lobby Screen */
-        #lobby {
+        * { margin: 0; padding: 0; box-sizing: border-box; touch-action: none; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+        body { overflow: hidden; background: #000; font-family: system-ui, -apple-system, sans-serif; }
+        #canvas-box { width: 100vw; height: 100vh; display: block; }
+
+        /* Auto-Rotate Screen Blocker */
+        #rotate-lock {
+            display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: #090d16; z-index: 9999; color: white; flex-direction: column;
+            justify-content: center; align-items: center; text-align: center; padding: 20px;
+        }
+        #rotate-lock .phone-icon { font-size: 50px; margin-bottom: 15px; animation: rot 1.5s infinite ease-in-out; }
+        @keyframes rot { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(-90deg); } }
+
+        @media (orientation: portrait) {
+            #rotate-lock { display: flex !important; }
+            #ui-layer, #canvas-box { display: none !important; }
+        }
+
+        /* Top HUD & Live Counter */
+        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+        #top-hud { position: absolute; top: 8px; left: 10px; right: 10px; display: flex; justify-content: space-between; pointer-events: auto; }
+        .hud-tag { background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(6px); border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; padding: 6px 12px; color: white; font-size: 11px; }
+
+        /* Lobby & Character Selection */
+        #char-modal {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
             background: rgba(15, 23, 42, 0.95); border: 2px solid #6366f1; border-radius: 12px;
-            padding: 20px; color: white; width: 90%; max-width: 340px; pointer-events: auto; z-index: 100;
+            padding: 16px; color: white; width: 360px; pointer-events: auto; z-index: 500;
         }
-        #lobby h2 { text-align: center; color: #a5b4fc; font-size: 18px; margin-bottom: 12px; }
-        .inp { width: 100%; padding: 8px 10px; margin: 6px 0 12px; border-radius: 6px; border: 1px solid #334155; background: #1e293b; color: white; outline: none; }
-        .btn { width: 100%; padding: 10px; background: #4f46e5; border: none; border-radius: 6px; color: white; font-weight: bold; cursor: pointer; }
+        #char-modal h3 { text-align: center; color: #818cf8; margin-bottom: 10px; font-size: 16px; }
+        .field { width: 100%; padding: 7px; margin: 4px 0 10px; border-radius: 6px; border: 1px solid #334155; background: #1e293b; color: white; font-size: 12px; outline: none; }
+        .join-btn { width: 100%; padding: 9px; background: #4f46e5; border: none; border-radius: 6px; color: white; font-weight: bold; cursor: pointer; }
 
-        /* Top HUD */
-        #hud { position: absolute; top: 10px; left: 10px; right: 10px; display: flex; justify-content: space-between; gap: 8px; }
-        .card { background: rgba(0,0,0,0.65); backdrop-filter: blur(6px); padding: 8px 12px; border-radius: 8px; color: white; font-size: 11px; border: 1px solid rgba(255,255,255,0.1); }
+        /* Left D-PAD Controls (Movements) */
+        #dpad-zone { position: absolute; bottom: 15px; left: 15px; width: 130px; height: 130px; pointer-events: auto; }
+        .d-btn {
+            position: absolute; width: 42px; height: 42px; background: rgba(30, 41, 59, 0.8);
+            border: 2px solid rgba(255,255,255,0.25); border-radius: 10px; color: white; font-size: 16px;
+            display: flex; align-items: center; justify-content: center; font-weight: bold;
+        }
+        .d-btn:active { background: #6366f1; }
+        #btn-fwd { top: 0; left: 44px; }
+        #btn-back { bottom: 0; left: 44px; }
+        #btn-left { top: 44px; left: 0; }
+        #btn-right { top: 44px; right: 0; }
 
-        /* Interaction Banner */
-        #action-banner {
-            position: absolute; top: 65%; left: 50%; transform: translate(-50%, -50%);
-            background: rgba(0,0,0,0.85); border: 1px solid #f59e0b; color: #f59e0b;
-            padding: 8px 16px; border-radius: 20px; font-weight: bold; font-size: 13px; display: none; pointer-events: auto;
+        /* Right Action Buttons */
+        #action-zone { position: absolute; bottom: 15px; right: 15px; display: flex; flex-direction: column; gap: 8px; pointer-events: auto; }
+        .act-circle {
+            background: rgba(30, 41, 59, 0.85); border: 2px solid #ec4899; color: white;
+            padding: 8px 14px; border-radius: 20px; font-size: 12px; font-weight: bold; cursor: pointer; text-align: center;
         }
+        .act-circle:active { background: #db2777; }
 
-        /* Chat System */
-        #chat-wrap {
-            position: absolute; bottom: 15px; left: 15px; width: 260px;
-            background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(8px);
-            border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); pointer-events: auto;
-        }
-        #chat-logs { height: 100px; overflow-y: auto; padding: 8px; font-size: 11px; color: #f1f5f9; }
-        #chat-form { display: flex; border-top: 1px solid #334155; }
-        #chat-msg { flex: 1; padding: 6px 8px; background: transparent; border: none; color: white; font-size: 11px; outline: none; }
-        #chat-btn { padding: 6px 12px; background: #4f46e5; border: none; color: white; cursor: pointer; font-size: 11px; }
-
-        /* Mobile Action Buttons */
-        #mobile-controls {
-            position: absolute; bottom: 20px; right: 15px; display: flex; flex-direction: column; gap: 8px; pointer-events: auto;
-        }
-        .act-btn {
-            background: rgba(30, 41, 59, 0.85); border: 1px solid #6366f1; color: white;
-            padding: 8px 14px; border-radius: 20px; font-size: 12px; font-weight: bold; cursor: pointer;
-        }
+        /* Chat Window */
+        #chat-dock { position: absolute; top: 45px; left: 10px; width: 220px; background: rgba(15, 23, 42, 0.8); border-radius: 8px; pointer-events: auto; border: 1px solid rgba(255,255,255,0.1); }
+        #chat-logs { height: 75px; overflow-y: auto; padding: 6px; font-size: 10px; color: #f1f5f9; }
+        #chat-dock form { display: flex; border-top: 1px solid #334155; }
+        #chat-input { flex: 1; padding: 5px; background: transparent; border: none; color: white; font-size: 11px; outline: none; }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 </head>
 <body>
-    <div id="canvas-container"></div>
 
-    <div id="ui">
-        <div id="hud">
-            <div class="card">
-                <b>My ID:</b> <span id="my-id" style="color:#38bdf8;">Generating...</span><br>
-                <b>Room:</b> <span id="room-status" style="color:#4ade80;">Single Player</span>
+    <!-- Screen Rotation Warning -->
+    <div id="rotate-lock">
+        <div class="phone-icon">📱 ➔ 📲</div>
+        <h2>Rotate Your Phone</h2>
+        <p style="color: #94a3b8; margin-top: 8px;">Kripya Auto-Rotate on karke phone ko <b>Landscape (Aada)</b> ghumayein.</p>
+    </div>
+
+    <div id="canvas-box"></div>
+
+    <div id="ui-layer">
+        <div id="top-hud">
+            <div class="hud-tag">
+                🟢 <b>Live Online:</b> <span id="online-counter" style="color: #4ade80;">1 Active</span> |
+                <b>My ID:</b> <span id="my-peer-id" style="color: #38bdf8;">Connecting...</span>
             </div>
-            <div class="card">
-                <button id="voice-btn" style="background:#ef4444; border:none; color:white; padding:4px 8px; border-radius:4px; font-weight:bold; cursor:pointer;">🎤 Mic Off</button>
-            </div>
-        </div>
-
-        <div id="action-banner">Close to Player! Tap Action Below</div>
-
-        <div id="chat-wrap">
-            <div id="chat-logs"><div style="color:#94a3b8;">Welcome! Share your ID to play together.</div></div>
-            <div id="chat-form">
-                <input id="chat-msg" type="text" placeholder="Type msg..." />
-                <button id="chat-btn">Send</button>
+            <div class="hud-tag">
+                <button id="mic-btn" style="background:#ef4444; color:white; border:none; padding:4px 8px; border-radius:4px; font-weight:bold;">🎤 Mic Off</button>
             </div>
         </div>
 
-        <div id="mobile-controls">
-            <button class="act-btn" id="btn-hand">🤝 Hand Hold</button>
-            <button class="act-btn" id="btn-kiss">💋 Kiss</button>
-            <button class="act-btn" id="btn-car">🚗 Drive / Exit</button>
+        <!-- Chat -->
+        <div id="chat-dock">
+            <div id="chat-logs"><div style="color:#94a3b8;">City World Ready!</div></div>
+            <form onsubmit="event.preventDefault(); sendChat();">
+                <input id="chat-input" placeholder="Type msg...">
+            </form>
+        </div>
+
+        <!-- Mobile Touch D-Pad -->
+        <div id="dpad-zone">
+            <div class="d-btn" id="btn-fwd">⬆️</div>
+            <div class="d-btn" id="btn-left">⬅️</div>
+            <div class="d-btn" id="btn-right">➡️</div>
+            <div class="d-btn" id="btn-back">⬇️</div>
+        </div>
+
+        <!-- Right Side Actions -->
+        <div id="action-zone">
+            <button class="act-circle" id="btn-hand">🤝 Hold Hand</button>
+            <button class="act-circle" id="btn-kiss">💋 Kiss</button>
+            <button class="act-circle" id="btn-car" style="border-color:#38bdf8;">🚗 Drive Car</button>
         </div>
     </div>
 
-    <div id="lobby">
-        <h2>Metaverse Setup</h2>
-        <label style="font-size:11px; color:#94a3b8;">Choose Shirt Color:</label>
-        <select id="char-color" class="inp">
-            <option value="#3b82f6">Ocean Blue</option>
-            <option value="#ef4444">Ruby Red</option>
-            <option value="#10b981">Emerald Green</option>
-            <option value="#f59e0b">Amber Gold</option>
+    <!-- Character Pick Modal -->
+    <div id="char-modal">
+        <h3>Choose Character & Spawn</h3>
+        <label style="font-size:11px; color:#94a3b8;">Select Character:</label>
+        <select id="char-type" class="field">
+            <option value="hoodie_boy">1. Boy in Black Hoodie & Jeans (Photo 1)</option>
+            <option value="gold_gown">2. Girl in Golden Silk Gown (Photo 2)</option>
+            <option value="pink_fairy">3. Fairy Girl in Pink Goddess Dress (Photo 3)</option>
+            <option value="petal_girl">4. Princess in Pink Petal Dress (Photo 4)</option>
         </select>
-        <label style="font-size:11px; color:#94a3b8;">Partner's ID (Leave empty to Host):</label>
-        <input id="partner-id" class="inp" type="text" placeholder="Paste ID here to join">
-        <button id="start-game" class="btn">Enter World</button>
+        <label style="font-size:11px; color:#94a3b8;">Friend's Room ID (Khali chhodein agar akele hain):</label>
+        <input id="target-id" class="field" placeholder="Paste partner's ID here">
+        <button class="join-btn" onclick="enterWorld()">Enter 3D City</button>
     </div>
 
-    <audio id="peer-audio" autoplay></audio>
+    <audio id="remote-audio" autoplay></audio>
     <script>
-                /* --- 1. HIGH-GRAPHICS SCENE & LIGHTING --- */
-        const container = document.getElementById('canvas-container');
+                /* --- 1. ENVIRONMENT, BUILDINGS & HUMAN NEED PROPS --- */
+        const container = document.getElementById('canvas-box');
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x87ceeb);
-        scene.fog = new THREE.FogExp2(0x87ceeb, 0.015);
+        scene.fog = new THREE.FogExp2(0x87ceeb, 0.012);
 
         const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 500);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -115,331 +144,410 @@
         renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         container.appendChild(renderer.domElement);
 
-        const hemiLight = new THREE.HemisphereLight(0xffffff, 0x334155, 0.6);
+        const hemiLight = new THREE.HemisphereLight(0xffffff, 0x334155, 0.7);
         scene.add(hemiLight);
 
-        const sunLight = new THREE.DirectionalLight(0xfffaed, 1.0);
-        sunLight.position.set(30, 50, 20);
-        sunLight.castShadow = true;
-        sunLight.shadow.mapSize.width = 1024;
-        sunLight.shadow.mapSize.height = 1024;
-        scene.add(sunLight);
+        const sun = new THREE.DirectionalLight(0xfffaed, 1.1);
+        sun.position.set(40, 70, 30);
+        sun.castShadow = true;
+        scene.add(sun);
 
-        // Ground & Road
-        const ground = new THREE.Mesh(new THREE.PlaneGeometry(300, 300), new THREE.MeshStandardMaterial({ color: 0x2e3842, roughness: 0.9 }));
+        // Ground & Main Road
+        const ground = new THREE.Mesh(new THREE.PlaneGeometry(350, 350), new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.9 }));
         ground.rotation.x = -Math.PI / 2;
         ground.receiveShadow = true;
         scene.add(ground);
 
-        const road = new THREE.Mesh(new THREE.PlaneGeometry(18, 300), new THREE.MeshStandardMaterial({ color: 0x181e24, roughness: 0.7 }));
-        road.rotation.x = -Math.PI / 2;
-        road.position.y = 0.02;
-        road.receiveShadow = true;
-        scene.add(road);
+        const mainRoad = new THREE.Mesh(new THREE.PlaneGeometry(22, 350), new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.7 }));
+        mainRoad.rotation.x = -Math.PI / 2;
+        mainRoad.position.y = 0.02;
+        scene.add(mainRoad);
 
-        // City Skyscrapers
-        function createCity() {
-            const bMat = new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.1, roughness: 0.6 });
-            for(let x = -80; x <= 80; x += 35) {
-                if(Math.abs(x) < 20) continue;
-                for(let z = -90; z <= 90; z += 40) {
-                    const h = 18 + Math.random() * 30;
-                    const b = new THREE.Mesh(new THREE.BoxGeometry(18, h, 20), bMat);
-                    b.position.set(x, h/2, z);
-                    b.castShadow = true;
-                    b.receiveShadow = true;
-                    scene.add(b);
-                }
+        // Houses (Living space for humans)
+        function spawnHouse(x, z, wallColor) {
+            const house = new THREE.Group();
+            const walls = new THREE.Mesh(new THREE.BoxGeometry(10, 6, 12), new THREE.MeshStandardMaterial({ color: wallColor }));
+            walls.position.y = 3;
+            walls.castShadow = true;
+            house.add(walls);
+
+            // Roof
+            const roof = new THREE.Mesh(new THREE.ConeGeometry(8.5, 3.5, 4), new THREE.MeshStandardMaterial({ color: 0x7c2d12 }));
+            roof.position.y = 7.5;
+            roof.rotation.y = Math.PI / 4;
+            roof.castShadow = true;
+            house.add(roof);
+
+            // Door
+            const door = new THREE.Mesh(new THREE.PlaneGeometry(2, 4), new THREE.MeshStandardMaterial({ color: 0x451a03 }));
+            door.position.set(0, 2, 6.05);
+            house.add(door);
+
+            house.position.set(x, 0, z);
+            scene.add(house);
+        }
+        spawnHouse(25, 20, 0xdbeafe);
+        spawnHouse(25, -20, 0xfef3c7);
+        spawnHouse(-25, 10, 0xede9fe);
+
+        // Street Lights & Park Benches
+        function spawnBench(x, z, rotY) {
+            const bench = new THREE.Mesh(new THREE.BoxGeometry(3, 0.6, 1.2), new THREE.MeshStandardMaterial({ color: 0x78350f }));
+            bench.position.set(x, 0.3, z);
+            bench.rotation.y = rotY;
+            scene.add(bench);
+        }
+        spawnBench(13, 5, -Math.PI / 2);
+        spawnBench(-13, -10, Math.PI / 2);
+
+        // Food & Coffee Stall (Human needs)
+        function spawnCafe(x, z) {
+            const cafe = new THREE.Group();
+            const counter = new THREE.Mesh(new THREE.BoxGeometry(5, 2.5, 3), new THREE.MeshStandardMaterial({ color: 0x059669 }));
+            counter.position.y = 1.25;
+            cafe.add(counter);
+            const roof = new THREE.Mesh(new THREE.BoxGeometry(6, 0.4, 4), new THREE.MeshStandardMaterial({ color: 0xf59e0b }));
+            roof.position.y = 3.6;
+            cafe.add(roof);
+            cafe.position.set(x, 0, z);
+            scene.add(cafe);
+        }
+        spawnCafe(15, -40);
+
+        // Vehicles: Drivable Sports Car & Public Bus
+        const cityCar = new THREE.Group();
+        const carBody = new THREE.Mesh(new THREE.BoxGeometry(2.8, 1.2, 5.5), new THREE.MeshStandardMaterial({ color: 0xdc2626, metalness: 0.6, roughness: 0.3 }));
+        carBody.position.y = 0.8;
+        carBody.castShadow = true;
+        cityCar.add(carBody);
+        cityCar.position.set(5, 0, 10);
+        scene.add(cityCar);
+
+        const cityBus = new THREE.Group();
+        const busBody = new THREE.Mesh(new THREE.BoxGeometry(4.2, 3.8, 13), new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.4 }));
+        busBody.position.y = 2.1;
+        busBody.castShadow = true;
+        cityBus.add(busBody);
+        cityBus.position.set(-5, 0, -35);
+        scene.add(cityBus);
+                /* --- 2. ACCURATE CHARACTER MODELS FROM YOUR PHOTOS --- */
+        function createCharacterMesh(type) {
+            const char = new THREE.Group();
+            const skinMat = new THREE.MeshStandardMaterial({ color: 0xffdfd3, roughness: 0.6 });
+
+            let torsoMat, legMat, hairMat;
+            const legLeft = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.13, 0.9), skinMat);
+            legLeft.position.set(-0.25, 0.45, 0);
+            const legRight = legLeft.clone();
+            legRight.position.x = 0.25;
+
+            if (type === 'hoodie_boy') {
+                // PHOTO 1: Black Oversized Hoodie, Baggy Blue Jeans, Dark Hair
+                torsoMat = new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.9 }); // Black hoodie
+                legMat = new THREE.MeshStandardMaterial({ color: 0x60a5fa, roughness: 0.8 });   // Light denim
+                legLeft.material = legMat;
+                legRight.material = legMat;
+
+                const hoodie = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.48, 1.3, 16), torsoMat);
+                hoodie.position.y = 1.35;
+                char.add(hoodie);
+
+                // Head with Hood
+                const head = new THREE.Mesh(new THREE.SphereGeometry(0.32, 16, 16), skinMat);
+                head.position.y = 2.25;
+                char.add(head);
+                const hoodWrap = new THREE.Mesh(new THREE.SphereGeometry(0.38, 16, 16), torsoMat);
+                hoodWrap.position.set(0, 2.3, -0.05);
+                char.add(hoodWrap);
+
+            } else if (type === 'gold_gown') {
+                // PHOTO 2: Metallic Shiny Gold Silk Slit Dress, Dark Hair
+                const goldMat = new THREE.MeshStandardMaterial({ color: 0xd97706, metalness: 0.85, roughness: 0.2 });
+                const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.35, 1.2), goldMat);
+                torso.position.y = 1.35;
+                char.add(torso);
+
+                const gownSkirt = new THREE.Mesh(new THREE.ConeGeometry(0.65, 1.1, 16), goldMat);
+                gownSkirt.position.y = 0.7;
+                char.add(gownSkirt);
+
+                const head = new THREE.Mesh(new THREE.SphereGeometry(0.32, 16, 16), skinMat);
+                head.position.y = 2.25;
+                char.add(head);
+
+                const darkHair = new THREE.Mesh(new THREE.SphereGeometry(0.36, 16, 16), new THREE.MeshStandardMaterial({ color: 0x1c1917 }));
+                darkHair.position.set(0, 2.35, -0.05);
+                char.add(darkHair);
+
+            } else if (type === 'pink_fairy') {
+                // PHOTO 3: Pink Goddess/Cosplay Outfit with Long Pink Hair
+                const pinkCloth = new THREE.MeshStandardMaterial({ color: 0xf472b6, roughness: 0.4 });
+                const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.34, 1.2), pinkCloth);
+                torso.position.y = 1.35;
+                char.add(torso);
+
+                const head = new THREE.Mesh(new THREE.SphereGeometry(0.32, 16, 16), skinMat);
+                head.position.y = 2.25;
+                char.add(head);
+
+                // Long Pink Hair & Tiara
+                const pinkHair = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.45, 1.2, 16), new THREE.MeshStandardMaterial({ color: 0xfba0e3 }));
+                pinkHair.position.set(0, 2.1, -0.15);
+                char.add(pinkHair);
+
+            } else {
+                // PHOTO 4: Pink Petal Skirt Princess with Silver Ponytail & Butterfly
+                const petalMat = new THREE.MeshStandardMaterial({ color: 0xf43f5e, roughness: 0.5 });
+                const topMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3 });
+
+                const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.35, 1.2), topMat);
+                torso.position.y = 1.35;
+                char.add(torso);
+
+                // Petal Layered Skirt
+                const petalSkirt = new THREE.Mesh(new THREE.ConeGeometry(0.75, 0.8, 8), petalMat);
+                petalSkirt.position.y = 0.8;
+                char.add(petalSkirt);
+
+                const head = new THREE.Mesh(new THREE.SphereGeometry(0.32, 16, 16), skinMat);
+                head.position.y = 2.25;
+                char.add(head);
+
+                // Silver Hair Ponytail
+                const silverHair = new THREE.Mesh(new THREE.SphereGeometry(0.36, 16, 16), new THREE.MeshStandardMaterial({ color: 0xe2e8f0 }));
+                silverHair.position.set(0, 2.35, -0.05);
+                char.add(silverHair);
             }
-        }
-        createCity();
 
-        // Vehicles: Sports Car & Public Bus
-        function makeCar() {
-            const car = new THREE.Group();
-            const body = new THREE.Mesh(new THREE.BoxGeometry(2.6, 1.2, 5), new THREE.MeshStandardMaterial({ color: 0xdc2626, metalness: 0.5, roughness: 0.3 }));
-            body.position.y = 0.8;
-            body.castShadow = true;
-            car.add(body);
-            car.position.set(4, 0, 8);
-            scene.add(car);
-            return car;
-        }
+            char.add(legLeft);
+            char.add(legRight);
 
-        function makeBus() {
-            const bus = new THREE.Group();
-            const body = new THREE.Mesh(new THREE.BoxGeometry(4, 3.5, 12), new THREE.MeshStandardMaterial({ color: 0xfbbf24, roughness: 0.5 }));
-            body.position.y = 1.9;
-            body.castShadow = true;
-            bus.add(body);
-            bus.position.set(-5, 0, -20);
-            scene.add(bus);
-            return bus;
-        }
+            // Floating Heart for Kiss Pose
+            const kissHeart = new THREE.Mesh(new THREE.SphereGeometry(0.25, 8, 8), new THREE.MeshBasicMaterial({ color: 0xff007f }));
+            kissHeart.position.set(0, 2.8, 0);
+            kissHeart.visible = false;
+            char.add(kissHeart);
 
-        const worldCar = makeCar();
-        const worldBus = makeBus();
-                /* --- 2. 3D CHARACTER FACTORY & ANIMATIONS --- */
-        function buildAvatar(colorHex) {
-            const avatar = new THREE.Group();
-            
-            // Torso / Shirt
-            const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.4, 1.2, 16), new THREE.MeshStandardMaterial({ color: colorHex }));
-            torso.position.y = 1.3;
-            torso.castShadow = true;
-            avatar.add(torso);
-
-            // Head & Hair
-            const head = new THREE.Mesh(new THREE.SphereGeometry(0.32, 16, 16), new THREE.MeshStandardMaterial({ color: 0xfcd34d }));
-            head.position.y = 2.15;
-            head.castShadow = true;
-            avatar.add(head);
-
-            // Legs (for walking animation)
-            const legMat = new THREE.MeshStandardMaterial({ color: 0x1e293b });
-            const leftLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.12, 0.85), legMat);
-            leftLeg.position.set(-0.22, 0.45, 0);
-            avatar.add(leftLeg);
-
-            const rightLeg = leftLeg.clone();
-            rightLeg.position.x = 0.22;
-            avatar.add(rightLeg);
-
-            // Floating Heart for Kissing
-            const heartGeo = new THREE.SphereGeometry(0.2, 8, 8);
-            const heart = new THREE.Mesh(heartGeo, new THREE.MeshBasicMaterial({ color: 0xff1493 }));
-            heart.position.set(0, 2.7, 0);
-            heart.visible = false;
-            avatar.add(heart);
-
-            avatar.userData = { leftLeg, rightLeg, heart };
-            scene.add(avatar);
-            return avatar;
+            char.userData = { legLeft, legRight, kissHeart, type };
+            scene.add(char);
+            return char;
         }
 
         let myPlayer = null;
-        let peerPlayer = null;
+        let remotePlayer = null;
         let isDriving = false;
         let isHoldingHands = false;
         let isKissing = false;
+                /* --- 3. MOVEMENT, ON-SCREEN TOUCH BUTTONS & INTERACTIONS --- */
+        const moveState = { fwd: false, back: false, left: false, right: false };
 
-        // Desktop Keyboard Controls
-        const keys = {};
-        window.addEventListener('keydown', (e) => {
-            keys[e.key.toLowerCase()] = true;
-            if(e.key.toLowerCase() === 'e') toggleHandHold();
-            if(e.key.toLowerCase() === 'k') triggerKiss();
-            if(e.key.toLowerCase() === 'f') toggleCar();
-        });
-        window.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
+        function bindTouch(id, dir) {
+            const btn = document.getElementById(id);
+            btn.addEventListener('touchstart', (e) => { e.preventDefault(); moveState[dir] = true; });
+            btn.addEventListener('touchend', (e) => { e.preventDefault(); moveState[dir] = false; });
+            btn.addEventListener('mousedown', () => moveState[dir] = true);
+            btn.addEventListener('mouseup', () => moveState[dir] = false);
+        }
+        bindTouch('btn-fwd', 'fwd');
+        bindTouch('btn-back', 'back');
+        bindTouch('btn-left', 'left');
+        bindTouch('btn-right', 'right');
 
-        // Action Triggers
-        function toggleHandHold() {
-            if(!peerPlayer || !myPlayer) return;
-            if(myPlayer.position.distanceTo(peerPlayer.position) < 3.5) {
+        // Social Actions
+        document.getElementById('btn-hand').onclick = () => {
+            if(!remotePlayer || !myPlayer) return;
+            if(myPlayer.position.distanceTo(remotePlayer.position) < 4) {
                 isHoldingHands = !isHoldingHands;
                 isKissing = false;
-                myPlayer.userData.heart.visible = false;
-                postChat("System", isHoldingHands ? "🤝 Now walking hand-in-hand!" : "Released hands.");
-                sendP2P({ type: 'hand', state: isHoldingHands });
+                myPlayer.userData.kissHeart.visible = false;
+                broadcastData({ type: 'hand', state: isHoldingHands });
             }
-        }
+        };
 
-        function triggerKiss() {
-            if(!peerPlayer || !myPlayer) return;
-            if(myPlayer.position.distanceTo(peerPlayer.position) < 3.5) {
+        document.getElementById('btn-kiss').onclick = () => {
+            if(!remotePlayer || !myPlayer) return;
+            if(myPlayer.position.distanceTo(remotePlayer.position) < 4) {
                 isKissing = !isKissing;
-                myPlayer.userData.heart.visible = isKissing;
-                postChat("Romantic", isKissing ? "💋 Sharing a sweet kiss!" : "Kiss ended.");
-                sendP2P({ type: 'kiss', state: isKissing });
+                myPlayer.userData.kissHeart.visible = isKissing;
+                broadcastData({ type: 'kiss', state: isKissing });
             }
-        }
+        };
 
-        function toggleCar() {
+        document.getElementById('btn-car').onclick = () => {
             if(!myPlayer) return;
-            if(myPlayer.position.distanceTo(worldCar.position) < 4) {
+            if(myPlayer.position.distanceTo(cityCar.position) < 4.5) {
                 isDriving = !isDriving;
                 myPlayer.visible = !isDriving;
-                postChat("Vehicle", isDriving ? "Entered Car. Use W/S/A/D to drive!" : "Exited Car.");
             }
-        }
+        };
 
-        // Mobile Button Listeners
-        document.getElementById('btn-hand').onclick = toggleHandHold;
-        document.getElementById('btn-kiss').onclick = triggerKiss;
-        document.getElementById('btn-car').onclick = toggleCar;
-                /* --- 3. MOVEMENT & INTERACTION LOGIC --- */
-        function handleMovement(delta) {
+        function processMovement(delta) {
             if(!myPlayer) return;
 
             if(isDriving) {
-                const spd = 20 * delta;
-                if(keys['w']) worldCar.translateZ(spd);
-                if(keys['s']) worldCar.translateZ(-spd);
-                if(keys['a']) worldCar.rotation.y += 2.2 * delta;
-                if(keys['d']) worldCar.rotation.y -= 2.2 * delta;
-                
-                myPlayer.position.copy(worldCar.position);
-                camera.position.set(worldCar.position.x, worldCar.position.y + 5, worldCar.position.z - 9);
-                camera.lookAt(worldCar.position);
+                const carSpeed = 22 * delta;
+                if(moveState.fwd) cityCar.translateZ(carSpeed);
+                if(moveState.back) cityCar.translateZ(-carSpeed);
+                if(moveState.left) cityCar.rotation.y += 2.5 * delta;
+                if(moveState.right) cityCar.rotation.y -= 2.5 * delta;
+
+                myPlayer.position.copy(cityCar.position);
+                camera.position.set(cityCar.position.x, cityCar.position.y + 6, cityCar.position.z - 10);
+                camera.lookAt(cityCar.position);
                 return;
             }
 
-            const walkSpd = (keys['shift'] ? 9 : 5) * delta;
+            const walkSpeed = 6 * delta;
             let moved = false;
 
-            if(keys['w']) { myPlayer.translateZ(walkSpd); moved = true; }
-            if(keys['s']) { myPlayer.translateZ(-walkSpd); moved = true; }
-            if(keys['a']) { myPlayer.rotation.y += 2.5 * delta; }
-            if(keys['d']) { myPlayer.rotation.y -= 2.5 * delta; }
+            if(moveState.fwd) { myPlayer.translateZ(walkSpeed); moved = true; }
+            if(moveState.back) { myPlayer.translateZ(-walkSpeed); moved = true; }
+            if(moveState.left) { myPlayer.rotation.y += 3.0 * delta; }
+            if(moveState.right) { myPlayer.rotation.y -= 3.0 * delta; }
 
             // Walk animation
             if(moved) {
-                const t = Date.now() * 0.009;
-                myPlayer.userData.leftLeg.rotation.x = Math.sin(t) * 0.6;
-                myPlayer.userData.rightLeg.rotation.x = -Math.sin(t) * 0.6;
+                const t = Date.now() * 0.01;
+                myPlayer.userData.legLeft.rotation.x = Math.sin(t) * 0.6;
+                myPlayer.userData.legRight.rotation.x = -Math.sin(t) * 0.6;
             } else {
-                myPlayer.userData.leftLeg.rotation.x = 0;
-                myPlayer.userData.rightLeg.rotation.x = 0;
+                myPlayer.userData.legLeft.rotation.x = 0;
+                myPlayer.userData.legRight.rotation.x = 0;
             }
 
             // Hand hold lock
-            if(isHoldingHands && peerPlayer) {
-                const offset = new THREE.Vector3(1.1, 0, 0).applyQuaternion(myPlayer.quaternion);
-                peerPlayer.position.lerp(myPlayer.position.clone().add(offset), 0.15);
-                peerPlayer.rotation.y = myPlayer.rotation.y;
+            if(isHoldingHands && remotePlayer) {
+                const side = new THREE.Vector3(1.1, 0, 0).applyQuaternion(myPlayer.quaternion);
+                remotePlayer.position.lerp(myPlayer.position.clone().add(side), 0.2);
+                remotePlayer.rotation.y = myPlayer.rotation.y;
             }
 
-            // Kiss pose lock
-            if(isKissing && peerPlayer) {
-                const frontOffset = new THREE.Vector3(0, 0, 0.9).applyQuaternion(myPlayer.quaternion);
-                peerPlayer.position.lerp(myPlayer.position.clone().add(frontOffset), 0.15);
-                peerPlayer.lookAt(myPlayer.position);
+            // Kiss lock
+            if(isKissing && remotePlayer) {
+                const front = new THREE.Vector3(0, 0, 0.8).applyQuaternion(myPlayer.quaternion);
+                remotePlayer.position.lerp(myPlayer.position.clone().add(front), 0.2);
+                remotePlayer.lookAt(myPlayer.position);
             }
 
             // Camera follow
-            const camTarget = myPlayer.position.clone().add(new THREE.Vector3(0, 3.5, -6.5).applyQuaternion(myPlayer.quaternion));
-            camera.position.lerp(camTarget, 0.1);
-            camera.lookAt(myPlayer.position.x, myPlayer.position.y + 1.5, myPlayer.position.z);
-
-            // Proximity HUD
-            if(peerPlayer) {
-                const near = myPlayer.position.distanceTo(peerPlayer.position) < 3.5;
-                document.getElementById('action-banner').style.display = near ? 'block' : 'none';
-            }
+            const camPos = myPlayer.position.clone().add(new THREE.Vector3(0, 3.8, -7).applyQuaternion(myPlayer.quaternion));
+            camera.position.lerp(camPos, 0.12);
+            camera.lookAt(myPlayer.position.x, myPlayer.position.y + 1.6, myPlayer.position.z);
         }
 
-        /* --- 4. PEERJS (MULTIPLAYER, CHAT & VOICE) --- */
+        /* --- 4. PEERJS NETWORKING & LIVE PLAYERS COUNTER --- */
         let peer = null;
         let dataConn = null;
-        let myMicStream = null;
 
-        document.getElementById('start-game').onclick = () => {
-            const color = document.getElementById('char-color').value;
-            const targetId = document.getElementById('partner-id').value.trim();
-            document.getElementById('lobby').style.display = 'none';
+        function enterWorld() {
+            const charChoice = document.getElementById('char-type').value;
+            const partner = document.getElementById('target-id').value.trim();
+            document.getElementById('char-modal').style.display = 'none';
 
-            myPlayer = buildAvatar(color);
+            myPlayer = createCharacterMesh(charChoice);
 
             peer = new Peer();
             peer.on('open', (id) => {
-                document.getElementById('my-id').innerText = id;
-                if(targetId) {
-                    dataConn = peer.connect(targetId);
-                    bindDataEvents();
+                document.getElementById('my-peer-id').innerText = id;
+                if(partner) {
+                    dataConn = peer.connect(partner);
+                    initConnection();
                 }
             });
 
-            peer.on('connection', (conn) => {
-                dataConn = conn;
-                bindDataEvents();
+            peer.on('connection', (c) => {
+                dataConn = c;
+                initConnection();
             });
 
             peer.on('call', (call) => {
-                navigator.mediaDevices.getUserMedia({ audio: true }).then((st) => {
-                    call.answer(st);
-                    call.on('stream', (rSt) => { document.getElementById('peer-audio').srcObject = rSt; });
+                navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
+                    call.answer(stream);
+                    call.on('stream', (rStream) => { document.getElementById('remote-audio').srcObject = rStream; });
                 });
             });
-        };
+        }
 
-        function bindDataEvents() {
+        function initConnection() {
             dataConn.on('open', () => {
-                document.getElementById('room-status').innerText = "Friend Joined!";
-                postChat("System", "Partner connected successfully!");
+                // Live Player Counter updates to 2
+                document.getElementById('online-counter').innerText = "2 Players Active";
+                broadcastData({ type: 'spawn', char: myPlayer.userData.type });
             });
+
             dataConn.on('data', (d) => {
                 if(d.type === 'sync') {
-                    if(!peerPlayer) peerPlayer = buildAvatar(0x10b981);
-                    peerPlayer.position.set(d.x, d.y, d.z);
-                    peerPlayer.rotation.y = d.rotY;
+                    if(!remotePlayer) remotePlayer = createCharacterMesh(d.char || 'gold_gown');
+                    remotePlayer.position.set(d.x, d.y, d.z);
+                    remotePlayer.rotation.y = d.rotY;
                 } else if(d.type === 'hand') {
                     isHoldingHands = d.state;
-                    postChat("Interaction", isHoldingHands ? "🤝 Hand holding started!" : "Hands released.");
                 } else if(d.type === 'kiss') {
                     isKissing = d.state;
-                    if(peerPlayer) peerPlayer.userData.heart.visible = isKissing;
-                    postChat("Interaction", isKissing ? "💋 Kiss pose started!" : "Kiss ended.");
-                } else if(d.type === 'msg') {
-                    postChat("Friend", d.text);
+                    if(remotePlayer) remotePlayer.userData.kissHeart.visible = isKissing;
+                } else if(d.type === 'chat') {
+                    addChat(d.msg, false);
                 }
             });
         }
 
-        function sendP2P(data) {
+        function broadcastData(data) {
             if(dataConn && dataConn.open) dataConn.send(data);
         }
 
-        // Voice button
-        document.getElementById('voice-btn').onclick = async () => {
+        // Voice Button
+        document.getElementById('mic-btn').onclick = async () => {
             try {
-                myMicStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                document.getElementById('voice-btn').style.background = '#22c55e';
-                document.getElementById('voice-btn').innerText = '🎤 Voice On';
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                document.getElementById('mic-btn').style.background = '#22c55e';
+                document.getElementById('mic-btn').innerText = '🎤 Voice Live';
                 if(dataConn && dataConn.peer) {
-                    const call = peer.call(dataConn.peer, myMicStream);
-                    call.on('stream', (rSt) => { document.getElementById('peer-audio').srcObject = rSt; });
+                    const call = peer.call(dataConn.peer, stream);
+                    call.on('stream', (s) => document.getElementById('remote-audio').srcObject = s);
                 }
-            } catch(e) { alert("Microphone access denied!"); }
+            } catch(e) { alert("Microphone access needed!"); }
         };
 
         // Chat
-        function postChat(usr, txt) {
+        function sendChat() {
+            const input = document.getElementById('chat-input');
+            const msg = input.value.trim();
+            if(!msg) return;
+            addChat(msg, true);
+            broadcastData({ type: 'chat', msg });
+            input.value = '';
+        }
+
+        function addChat(txt, isMe) {
             const logs = document.getElementById('chat-logs');
-            logs.innerHTML += `<div><b>${usr}:</b> ${txt}</div>`;
+            logs.innerHTML += `<div><b>${isMe ? 'You' : 'Friend'}:</b> ${txt}</div>`;
             logs.scrollTop = logs.scrollHeight;
         }
-        document.getElementById('chat-btn').onclick = () => {
-            const inp = document.getElementById('chat-msg');
-            if(!inp.value.trim()) return;
-            postChat("Me", inp.value);
-            sendP2P({ type: 'msg', text: inp.value });
-            inp.value = '';
-        };
 
-        /* --- 5. RENDER LOOP --- */
-        let prevTime = performance.now();
-        function loop() {
-            requestAnimationFrame(loop);
+        /* --- 5. GAME ENGINE LOOP --- */
+        let lastTime = performance.now();
+        function gameLoop() {
+            requestAnimationFrame(gameLoop);
             const now = performance.now();
-            const delta = (now - prevTime) / 1000;
-            prevTime = now;
+            const delta = (now - lastTime) / 1000;
+            lastTime = now;
 
-            handleMovement(delta);
+            processMovement(delta);
 
             if(myPlayer && dataConn && dataConn.open) {
-                sendP2P({
+                broadcastData({
                     type: 'sync',
                     x: myPlayer.position.x,
                     y: myPlayer.position.y,
                     z: myPlayer.position.z,
-                    rotY: myPlayer.rotation.y
+                    rotY: myPlayer.rotation.y,
+                    char: myPlayer.userData.type
                 });
             }
 
             renderer.render(scene, camera);
         }
-        loop();
+        gameLoop();
 
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
