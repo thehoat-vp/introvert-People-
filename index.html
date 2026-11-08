@@ -2,526 +2,444 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Metaverse - Realistic Models & Animations</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>3D Multiplayer Metaverse</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0b0f19; }
+        body { overflow: hidden; font-family: system-ui, -apple-system, sans-serif; background: #000; }
         #canvas-container { width: 100vw; height: 100vh; display: block; }
         
-        #ui-layer {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none; display: flex; flex-direction: column; justify-content: space-between;
-        }
-
-        #lobby-modal {
+        #ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+        
+        /* Lobby Screen */
+        #lobby {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            background: rgba(15, 23, 42, 0.95); border: 1px solid rgba(99, 102, 241, 0.5);
-            border-radius: 14px; padding: 24px; color: white; width: 340px; pointer-events: auto;
-            box-shadow: 0 10px 35px rgba(0,0,0,0.8); z-index: 100;
+            background: rgba(15, 23, 42, 0.95); border: 2px solid #6366f1; border-radius: 12px;
+            padding: 20px; color: white; width: 90%; max-width: 340px; pointer-events: auto; z-index: 100;
         }
-        #lobby-modal h2 { margin-bottom: 15px; text-align: center; color: #818cf8; font-size: 20px; }
-        .input-group { margin-bottom: 12px; }
-        .input-group label { display: block; font-size: 12px; margin-bottom: 5px; color: #94a3b8; }
-        .input-group input, .input-group select {
-            width: 100%; padding: 9px; border-radius: 6px; border: 1px solid #334155;
-            background: #1e293b; color: white; outline: none; font-size: 13px;
-        }
-        .btn-primary {
-            width: 100%; padding: 10px; background: #6366f1; border: none; border-radius: 6px;
-            color: white; font-weight: bold; cursor: pointer; transition: 0.2s; margin-top: 6px;
-        }
-        .btn-primary:hover { background: #4f46e5; }
+        #lobby h2 { text-align: center; color: #a5b4fc; font-size: 18px; margin-bottom: 12px; }
+        .inp { width: 100%; padding: 8px 10px; margin: 6px 0 12px; border-radius: 6px; border: 1px solid #334155; background: #1e293b; color: white; outline: none; }
+        .btn { width: 100%; padding: 10px; background: #4f46e5; border: none; border-radius: 6px; color: white; font-weight: bold; cursor: pointer; }
 
-        #hud { padding: 15px; display: flex; justify-content: space-between; pointer-events: auto; }
-        .hud-card {
-            background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(10px);
-            padding: 10px 16px; border-radius: 8px; color: white; font-size: 13px; border: 1px solid rgba(255,255,255,0.1);
+        /* Top HUD */
+        #hud { position: absolute; top: 10px; left: 10px; right: 10px; display: flex; justify-content: space-between; gap: 8px; }
+        .card { background: rgba(0,0,0,0.65); backdrop-filter: blur(6px); padding: 8px 12px; border-radius: 8px; color: white; font-size: 11px; border: 1px solid rgba(255,255,255,0.1); }
+
+        /* Interaction Banner */
+        #action-banner {
+            position: absolute; top: 65%; left: 50%; transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.85); border: 1px solid #f59e0b; color: #f59e0b;
+            padding: 8px 16px; border-radius: 20px; font-weight: bold; font-size: 13px; display: none; pointer-events: auto;
         }
 
-        #chat-container {
-            position: absolute; bottom: 20px; left: 20px; width: 320px;
-            pointer-events: auto; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(10px);
-            border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column;
+        /* Chat System */
+        #chat-wrap {
+            position: absolute; bottom: 15px; left: 15px; width: 260px;
+            background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(8px);
+            border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); pointer-events: auto;
         }
-        #chat-messages { height: 140px; overflow-y: auto; padding: 10px; font-size: 12px; color: #e2e8f0; }
-        #chat-input-box { display: flex; border-top: 1px solid #334155; }
-        #chat-input {
-            flex: 1; padding: 9px; background: transparent; border: none; color: white; font-size: 12px; outline: none;
-        }
-        #chat-send { padding: 9px 14px; background: #6366f1; border: none; color: white; cursor: pointer; font-size: 12px; font-weight: bold; }
+        #chat-logs { height: 100px; overflow-y: auto; padding: 8px; font-size: 11px; color: #f1f5f9; }
+        #chat-form { display: flex; border-top: 1px solid #334155; }
+        #chat-msg { flex: 1; padding: 6px 8px; background: transparent; border: none; color: white; font-size: 11px; outline: none; }
+        #chat-btn { padding: 6px 12px; background: #4f46e5; border: none; color: white; cursor: pointer; font-size: 11px; }
 
-        #prompt-box {
-            position: absolute; top: 60%; left: 50%; transform: translate(-50%, -50%);
-            background: rgba(0,0,0,0.85); color: #fbbf24; padding: 8px 18px; border-radius: 20px;
-            font-size: 13px; font-weight: bold; display: none; border: 1px solid #fbbf24; pointer-events: none;
+        /* Mobile Action Buttons */
+        #mobile-controls {
+            position: absolute; bottom: 20px; right: 15px; display: flex; flex-direction: column; gap: 8px; pointer-events: auto;
         }
-
-        #loading-overlay {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: #090d16; color: white; display: flex; flex-direction: column;
-            justify-content: center; align-items: center; z-index: 200; font-family: monospace;
+        .act-btn {
+            background: rgba(30, 41, 59, 0.85); border: 1px solid #6366f1; color: white;
+            padding: 8px 14px; border-radius: 20px; font-size: 12px; font-weight: bold; cursor: pointer;
         }
     </style>
-    <!-- Three.js + GLTFLoader + PeerJS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 </head>
 <body>
-
-    <div id="loading-overlay">
-        <h2>Loading 3D Models & City Assets...</h2>
-        <p style="color: #64748b; margin-top: 8px;">Preparing shaders, shadows & audio streams</p>
-    </div>
-
     <div id="canvas-container"></div>
 
-    <div id="ui-layer">
+    <div id="ui">
         <div id="hud">
-            <div class="hud-card">
-                <b>Your Peer ID:</b> <span id="my-peer-id" style="color: #38bdf8;">Connecting...</span><br>
-                <b>Room Status:</b> <span id="conn-status" style="color: #4ade80;">Ready</span>
+            <div class="card">
+                <b>My ID:</b> <span id="my-id" style="color:#38bdf8;">Generating...</span><br>
+                <b>Room:</b> <span id="room-status" style="color:#4ade80;">Single Player</span>
             </div>
-            <div class="hud-card">
-                <b>Controls:</b> W/A/S/D = Move | Shift = Run<br>
-                <b>E</b> = Interact (Kiss/Hold Hand) | <b>F</b> = Drive Car<br>
-                <button id="mic-btn" style="margin-top: 6px; padding: 5px 10px; cursor: pointer; border-radius: 5px; border: none; background: #ef4444; color: white; font-weight: bold;">🎤 Enable Voice Chat</button>
+            <div class="card">
+                <button id="voice-btn" style="background:#ef4444; border:none; color:white; padding:4px 8px; border-radius:4px; font-weight:bold; cursor:pointer;">🎤 Mic Off</button>
             </div>
         </div>
 
-        <div id="prompt-box">Press [E] to Interact</div>
+        <div id="action-banner">Close to Player! Tap Action Below</div>
 
-        <div id="chat-container">
-            <div id="chat-messages">
-                <div style="color: #94a3b8;">System: Welcome! Share your Peer ID with a friend to join the same world.</div>
+        <div id="chat-wrap">
+            <div id="chat-logs"><div style="color:#94a3b8;">Welcome! Share your ID to play together.</div></div>
+            <div id="chat-form">
+                <input id="chat-msg" type="text" placeholder="Type msg..." />
+                <button id="chat-btn">Send</button>
             </div>
-            <div id="chat-input-box">
-                <input type="text" id="chat-input" placeholder="Type message..." />
-                <button id="chat-send">Send</button>
-            </div>
+        </div>
+
+        <div id="mobile-controls">
+            <button class="act-btn" id="btn-hand">🤝 Hand Hold</button>
+            <button class="act-btn" id="btn-kiss">💋 Kiss</button>
+            <button class="act-btn" id="btn-car">🚗 Drive / Exit</button>
         </div>
     </div>
 
-    <div id="lobby-modal">
-        <h2>Select Character</h2>
-        <div class="input-group">
-            <label>Player Name:</label>
-            <input type="text" id="player-name" value="Player_1" maxlength="12">
-        </div>
-        <div class="input-group">
-            <label>Character Model:</label>
-            <select id="char-model-select">
-                <option value="default_human">Realistic Rig (Standard GLTF)</option>
-            </select>
-        </div>
-        <div class="input-group">
-            <label>Friend's Peer ID (To Join World):</label>
-            <input type="text" id="target-peer-id" placeholder="Paste friend's ID here">
-        </div>
-        <button class="btn-primary" id="start-btn">Join Metaverse</button>
+    <div id="lobby">
+        <h2>Metaverse Setup</h2>
+        <label style="font-size:11px; color:#94a3b8;">Choose Shirt Color:</label>
+        <select id="char-color" class="inp">
+            <option value="#3b82f6">Ocean Blue</option>
+            <option value="#ef4444">Ruby Red</option>
+            <option value="#10b981">Emerald Green</option>
+            <option value="#f59e0b">Amber Gold</option>
+        </select>
+        <label style="font-size:11px; color:#94a3b8;">Partner's ID (Leave empty to Host):</label>
+        <input id="partner-id" class="inp" type="text" placeholder="Paste ID here to join">
+        <button id="start-game" class="btn">Enter World</button>
     </div>
 
-    <audio id="remote-audio" autoplay></audio>
-
+    <audio id="peer-audio" autoplay></audio>
     <script>
-        /* --- 1. RENDERER & HIGH QUALITY ENVIRONMENT --- */
+                /* --- 1. HIGH-GRAPHICS SCENE & LIGHTING --- */
         const container = document.getElementById('canvas-container');
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x87ceeb);
-        scene.fog = new THREE.FogExp2(0x87ceeb, 0.012);
+        scene.fog = new THREE.FogExp2(0x87ceeb, 0.015);
 
-        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-        const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 500);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         renderer.shadowMap.enabled = true;
         renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-        renderer.outputEncoding = THREE.sRGBEncoding;
         container.appendChild(renderer.domElement);
 
-        // Natural Lighting & Shadows
-        const hemiLight = new THREE.HemisphereLight(0xffffff, 0x334155, 0.7);
+        const hemiLight = new THREE.HemisphereLight(0xffffff, 0x334155, 0.6);
         scene.add(hemiLight);
 
-        const sunLight = new THREE.DirectionalLight(0xfffaed, 1.2);
-        sunLight.position.set(40, 70, 20);
+        const sunLight = new THREE.DirectionalLight(0xfffaed, 1.0);
+        sunLight.position.set(30, 50, 20);
         sunLight.castShadow = true;
-        sunLight.shadow.mapSize.width = 2048;
-        sunLight.shadow.mapSize.height = 2048;
-        sunLight.shadow.camera.near = 0.5;
-        sunLight.shadow.camera.far = 200;
-        sunLight.shadow.camera.left = -50;
-        sunLight.shadow.camera.right = 50;
-        sunLight.shadow.camera.top = 50;
-        sunLight.shadow.camera.bottom = -50;
+        sunLight.shadow.mapSize.width = 1024;
+        sunLight.shadow.mapSize.height = 1024;
         scene.add(sunLight);
 
-        // Ground & City Layout
-        const groundGeo = new THREE.PlaneGeometry(400, 400);
-        const groundMat = new THREE.MeshStandardMaterial({ color: 0x242e38, roughness: 0.85 });
-        const ground = new THREE.Mesh(groundGeo, groundMat);
+        // Ground & Road
+        const ground = new THREE.Mesh(new THREE.PlaneGeometry(300, 300), new THREE.MeshStandardMaterial({ color: 0x2e3842, roughness: 0.9 }));
         ground.rotation.x = -Math.PI / 2;
         ground.receiveShadow = true;
         scene.add(ground);
 
-        // Asphalt Road
-        const roadGeo = new THREE.PlaneGeometry(24, 400);
-        const roadMat = new THREE.MeshStandardMaterial({ color: 0x171a21, roughness: 0.6 });
-        const road = new THREE.Mesh(roadGeo, roadMat);
+        const road = new THREE.Mesh(new THREE.PlaneGeometry(18, 300), new THREE.MeshStandardMaterial({ color: 0x181e24, roughness: 0.7 }));
         road.rotation.x = -Math.PI / 2;
         road.position.y = 0.02;
         road.receiveShadow = true;
         scene.add(road);
 
-        // Stylized City Blocks
-        function buildCity() {
-            const buildingMat = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.3, metalness: 0.2 });
-            for(let x = -120; x <= 120; x += 40) {
-                if(Math.abs(x) < 25) continue;
-                for(let z = -140; z <= 140; z += 50) {
-                    const h = 20 + Math.random() * 45;
-                    const bMesh = new THREE.Mesh(new THREE.BoxGeometry(22, h, 24), buildingMat);
-                    bMesh.position.set(x, h/2, z);
-                    bMesh.castShadow = true;
-                    bMesh.receiveShadow = true;
-                    scene.add(bMesh);
+        // City Skyscrapers
+        function createCity() {
+            const bMat = new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.1, roughness: 0.6 });
+            for(let x = -80; x <= 80; x += 35) {
+                if(Math.abs(x) < 20) continue;
+                for(let z = -90; z <= 90; z += 40) {
+                    const h = 18 + Math.random() * 30;
+                    const b = new THREE.Mesh(new THREE.BoxGeometry(18, h, 20), bMat);
+                    b.position.set(x, h/2, z);
+                    b.castShadow = true;
+                    b.receiveShadow = true;
+                    scene.add(b);
                 }
             }
         }
-        buildCity();
+        createCity();
 
-        // Vehicles
-        function buildVehicles() {
-            // Sports Car
+        // Vehicles: Sports Car & Public Bus
+        function makeCar() {
             const car = new THREE.Group();
-            const body = new THREE.Mesh(new THREE.BoxGeometry(3, 1.4, 6), new THREE.MeshStandardMaterial({ color: 0xef4444, metalness: 0.6, roughness: 0.2 }));
-            body.position.y = 0.9;
+            const body = new THREE.Mesh(new THREE.BoxGeometry(2.6, 1.2, 5), new THREE.MeshStandardMaterial({ color: 0xdc2626, metalness: 0.5, roughness: 0.3 }));
+            body.position.y = 0.8;
             body.castShadow = true;
             car.add(body);
-            car.position.set(6, 0, 15);
+            car.position.set(4, 0, 8);
             scene.add(car);
+            return car;
+        }
 
-            // Bus
+        function makeBus() {
             const bus = new THREE.Group();
-            const busBody = new THREE.Mesh(new THREE.BoxGeometry(4.5, 3.8, 14), new THREE.MeshStandardMaterial({ color: 0xfbbf24, metalness: 0.1, roughness: 0.5 }));
-            busBody.position.y = 2.1;
-            busBody.castShadow = true;
-            bus.add(busBody);
-            bus.position.set(-6, 0, -25);
+            const body = new THREE.Mesh(new THREE.BoxGeometry(4, 3.5, 12), new THREE.MeshStandardMaterial({ color: 0xfbbf24, roughness: 0.5 }));
+            body.position.y = 1.9;
+            body.castShadow = true;
+            bus.add(body);
+            bus.position.set(-5, 0, -20);
             scene.add(bus);
-
-            return { car, bus };
-        }
-        const vehicles = buildVehicles();
-
-        /* --- 2. GLTF MODEL LOADER & ANIMATION SYSTEM --- */
-        const loader = new THREE.GLTFLoader();
-        // Standard high-quality animated rigged character (Three.js official asset CDN)
-        const MODEL_URL = 'https://threejs.org/examples/models/gltf/Xbot.glb';
-
-        let playerCharacter = null;
-        let remoteCharacter = null;
-
-        function loadAnimatedCharacter(onLoaded) {
-            loader.load(MODEL_URL, (gltf) => {
-                const model = gltf.scene;
-                model.scale.set(1.4, 1.4, 1.4);
-                model.traverse((child) => {
-                    if (child.isMesh) {
-                        child.castShadow = true;
-                        child.receiveShadow = true;
-                    }
-                });
-
-                const mixer = new THREE.AnimationMixer(model);
-                const animations = {};
-                
-                // Map loaded animations: Idle, Walk, Run, Emote/Action
-                gltf.animations.forEach((clip) => {
-                    animations[clip.name.toLowerCase()] = mixer.clipAction(clip);
-                });
-
-                // Default fallback animations mapping if naming differs
-                const animKeys = Object.keys(animations);
-                const idleAction = animations['idle'] || animations[animKeys[0]];
-                const walkAction = animations['walk'] || animations[animKeys[1]] || idleAction;
-                const runAction = animations['run'] || animations[animKeys[2]] || walkAction;
-                const emoteAction = animations['agree'] || animations[animKeys[3]] || idleAction;
-
-                idleAction.play();
-
-                const charData = {
-                    mesh: model,
-                    mixer: mixer,
-                    actions: {
-                        idle: idleAction,
-                        walk: walkAction,
-                        run: runAction,
-                        emote: emoteAction
-                    },
-                    currentAction: idleAction,
-                    setAction: function(name) {
-                        const target = this.actions[name] || this.actions.idle;
-                        if(this.currentAction !== target) {
-                            this.currentAction.fadeOut(0.2);
-                            target.reset().fadeIn(0.2).play();
-                            this.currentAction = target;
-                        }
-                    }
-                };
-
-                scene.add(model);
-                onLoaded(charData);
-            }, undefined, (err) => {
-                console.error("GLTF load failed, fallback to geometry:", err);
-            });
+            return bus;
         }
 
-        /* --- 3. INPUTS & INTERACTION LOGIC --- */
-        const keys = {};
+        const worldCar = makeCar();
+        const worldBus = makeBus();
+                /* --- 2. 3D CHARACTER FACTORY & ANIMATIONS --- */
+        function buildAvatar(colorHex) {
+            const avatar = new THREE.Group();
+            
+            // Torso / Shirt
+            const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.4, 1.2, 16), new THREE.MeshStandardMaterial({ color: colorHex }));
+            torso.position.y = 1.3;
+            torso.castShadow = true;
+            avatar.add(torso);
+
+            // Head & Hair
+            const head = new THREE.Mesh(new THREE.SphereGeometry(0.32, 16, 16), new THREE.MeshStandardMaterial({ color: 0xfcd34d }));
+            head.position.y = 2.15;
+            head.castShadow = true;
+            avatar.add(head);
+
+            // Legs (for walking animation)
+            const legMat = new THREE.MeshStandardMaterial({ color: 0x1e293b });
+            const leftLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.12, 0.85), legMat);
+            leftLeg.position.set(-0.22, 0.45, 0);
+            avatar.add(leftLeg);
+
+            const rightLeg = leftLeg.clone();
+            rightLeg.position.x = 0.22;
+            avatar.add(rightLeg);
+
+            // Floating Heart for Kissing
+            const heartGeo = new THREE.SphereGeometry(0.2, 8, 8);
+            const heart = new THREE.Mesh(heartGeo, new THREE.MeshBasicMaterial({ color: 0xff1493 }));
+            heart.position.set(0, 2.7, 0);
+            heart.visible = false;
+            avatar.add(heart);
+
+            avatar.userData = { leftLeg, rightLeg, heart };
+            scene.add(avatar);
+            return avatar;
+        }
+
+        let myPlayer = null;
+        let peerPlayer = null;
         let isDriving = false;
         let isHoldingHands = false;
+        let isKissing = false;
 
+        // Desktop Keyboard Controls
+        const keys = {};
         window.addEventListener('keydown', (e) => {
             keys[e.key.toLowerCase()] = true;
-            if(e.key.toLowerCase() === 'e') triggerInteraction();
-            if(e.key.toLowerCase() === 'f') toggleVehicle();
+            if(e.key.toLowerCase() === 'e') toggleHandHold();
+            if(e.key.toLowerCase() === 'k') triggerKiss();
+            if(e.key.toLowerCase() === 'f') toggleCar();
         });
         window.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
 
-        function toggleVehicle() {
-            if(!playerCharacter) return;
-            const dist = playerCharacter.mesh.position.distanceTo(vehicles.car.position);
-            if(dist < 4) {
-                isDriving = !isDriving;
-                playerCharacter.mesh.visible = !isDriving;
-                addChatMessage("System", isDriving ? "Entered car. Drive with W/S and A/D" : "Exited car.");
-            }
-        }
-
-        function triggerInteraction() {
-            if(!remoteCharacter || !playerCharacter) return;
-            const dist = playerCharacter.mesh.position.distanceTo(remoteCharacter.mesh.position);
-            if(dist < 3.5) {
+        // Action Triggers
+        function toggleHandHold() {
+            if(!peerPlayer || !myPlayer) return;
+            if(myPlayer.position.distanceTo(peerPlayer.position) < 3.5) {
                 isHoldingHands = !isHoldingHands;
-                if(isHoldingHands) {
-                    playerCharacter.setAction('emote');
-                    addChatMessage("Interaction", "Hand holding / Kiss action active! 💕");
-                } else {
-                    playerCharacter.setAction('idle');
-                    addChatMessage("Interaction", "Released action.");
-                }
-                if (dataConn && dataConn.open) {
-                    dataConn.send({ type: 'interaction', holding: isHoldingHands });
-                }
+                isKissing = false;
+                myPlayer.userData.heart.visible = false;
+                postChat("System", isHoldingHands ? "🤝 Now walking hand-in-hand!" : "Released hands.");
+                sendP2P({ type: 'hand', state: isHoldingHands });
             }
         }
 
-        /* --- 4. PLAYER MOVEMENT & CAMERA UPDATE --- */
-        function updatePlayer(delta) {
-            if(!playerCharacter) return;
+        function triggerKiss() {
+            if(!peerPlayer || !myPlayer) return;
+            if(myPlayer.position.distanceTo(peerPlayer.position) < 3.5) {
+                isKissing = !isKissing;
+                myPlayer.userData.heart.visible = isKissing;
+                postChat("Romantic", isKissing ? "💋 Sharing a sweet kiss!" : "Kiss ended.");
+                sendP2P({ type: 'kiss', state: isKissing });
+            }
+        }
 
-            playerCharacter.mixer.update(delta);
-            if(remoteCharacter) remoteCharacter.mixer.update(delta);
+        function toggleCar() {
+            if(!myPlayer) return;
+            if(myPlayer.position.distanceTo(worldCar.position) < 4) {
+                isDriving = !isDriving;
+                myPlayer.visible = !isDriving;
+                postChat("Vehicle", isDriving ? "Entered Car. Use W/S/A/D to drive!" : "Exited Car.");
+            }
+        }
+
+        // Mobile Button Listeners
+        document.getElementById('btn-hand').onclick = toggleHandHold;
+        document.getElementById('btn-kiss').onclick = triggerKiss;
+        document.getElementById('btn-car').onclick = toggleCar;
+                /* --- 3. MOVEMENT & INTERACTION LOGIC --- */
+        function handleMovement(delta) {
+            if(!myPlayer) return;
 
             if(isDriving) {
-                const moveSpeed = 22 * delta;
-                if(keys['w']) vehicles.car.translateZ(moveSpeed);
-                if(keys['s']) vehicles.car.translateZ(-moveSpeed);
-                if(keys['a']) vehicles.car.rotation.y += 2.2 * delta;
-                if(keys['d']) vehicles.car.rotation.y -= 2.2 * delta;
-
-                playerCharacter.mesh.position.copy(vehicles.car.position);
-                camera.position.set(vehicles.car.position.x, vehicles.car.position.y + 6, vehicles.car.position.z - 11);
-                camera.lookAt(vehicles.car.position);
+                const spd = 20 * delta;
+                if(keys['w']) worldCar.translateZ(spd);
+                if(keys['s']) worldCar.translateZ(-spd);
+                if(keys['a']) worldCar.rotation.y += 2.2 * delta;
+                if(keys['d']) worldCar.rotation.y -= 2.2 * delta;
+                
+                myPlayer.position.copy(worldCar.position);
+                camera.position.set(worldCar.position.x, worldCar.position.y + 5, worldCar.position.z - 9);
+                camera.lookAt(worldCar.position);
                 return;
             }
 
-            const isRunning = keys['shift'];
-            const moveSpeed = (isRunning ? 11 : 5) * delta;
-            let isMoving = false;
+            const walkSpd = (keys['shift'] ? 9 : 5) * delta;
+            let moved = false;
 
-            if (keys['w']) { playerCharacter.mesh.translateZ(moveSpeed); isMoving = true; }
-            if (keys['s']) { playerCharacter.mesh.translateZ(-moveSpeed); isMoving = true; }
-            if (keys['a']) { playerCharacter.mesh.rotation.y += 2.8 * delta; }
-            if (keys['d']) { playerCharacter.mesh.rotation.y -= 2.8 * delta; }
+            if(keys['w']) { myPlayer.translateZ(walkSpd); moved = true; }
+            if(keys['s']) { myPlayer.translateZ(-walkSpd); moved = true; }
+            if(keys['a']) { myPlayer.rotation.y += 2.5 * delta; }
+            if(keys['d']) { myPlayer.rotation.y -= 2.5 * delta; }
 
-            // Set running/walking/idle animation states
-            if(!isHoldingHands) {
-                if(isMoving) {
-                    playerCharacter.setAction(isRunning ? 'run' : 'walk');
-                } else {
-                    playerCharacter.setAction('idle');
-                }
+            // Walk animation
+            if(moved) {
+                const t = Date.now() * 0.009;
+                myPlayer.userData.leftLeg.rotation.x = Math.sin(t) * 0.6;
+                myPlayer.userData.rightLeg.rotation.x = -Math.sin(t) * 0.6;
+            } else {
+                myPlayer.userData.leftLeg.rotation.x = 0;
+                myPlayer.userData.rightLeg.rotation.x = 0;
             }
 
-            // Sync hand-holding offset
-            if (isHoldingHands && remoteCharacter) {
-                const companionOffset = new THREE.Vector3(1.1, 0, 0).applyQuaternion(playerCharacter.mesh.quaternion);
-                remoteCharacter.mesh.position.lerp(playerCharacter.mesh.position.clone().add(companionOffset), 0.15);
-                remoteCharacter.mesh.quaternion.slerp(playerCharacter.mesh.quaternion, 0.15);
+            // Hand hold lock
+            if(isHoldingHands && peerPlayer) {
+                const offset = new THREE.Vector3(1.1, 0, 0).applyQuaternion(myPlayer.quaternion);
+                peerPlayer.position.lerp(myPlayer.position.clone().add(offset), 0.15);
+                peerPlayer.rotation.y = myPlayer.rotation.y;
+            }
+
+            // Kiss pose lock
+            if(isKissing && peerPlayer) {
+                const frontOffset = new THREE.Vector3(0, 0, 0.9).applyQuaternion(myPlayer.quaternion);
+                peerPlayer.position.lerp(myPlayer.position.clone().add(frontOffset), 0.15);
+                peerPlayer.lookAt(myPlayer.position);
             }
 
             // Camera follow
-            const targetCamPos = playerCharacter.mesh.position.clone().add(
-                new THREE.Vector3(0, 3.8, -6.5).applyQuaternion(playerCharacter.mesh.quaternion)
-            );
-            camera.position.lerp(targetCamPos, 0.1);
-            camera.lookAt(playerCharacter.mesh.position.x, playerCharacter.mesh.position.y + 1.8, playerCharacter.mesh.position.z);
+            const camTarget = myPlayer.position.clone().add(new THREE.Vector3(0, 3.5, -6.5).applyQuaternion(myPlayer.quaternion));
+            camera.position.lerp(camTarget, 0.1);
+            camera.lookAt(myPlayer.position.x, myPlayer.position.y + 1.5, myPlayer.position.z);
 
-            // Distance prompt check
-            if (remoteCharacter) {
-                const dist = playerCharacter.mesh.position.distanceTo(remoteCharacter.mesh.position);
-                const pBox = document.getElementById('prompt-box');
-                if (dist < 3.5) {
-                    pBox.style.display = 'block';
-                    pBox.innerText = isHoldingHands ? "Press [E] to Release" : "Press [E] for Couple Interaction (Kiss / Hand Hold)";
-                } else {
-                    pBox.style.display = 'none';
-                }
+            // Proximity HUD
+            if(peerPlayer) {
+                const near = myPlayer.position.distanceTo(peerPlayer.position) < 3.5;
+                document.getElementById('action-banner').style.display = near ? 'block' : 'none';
             }
         }
 
-        /* --- 5. PEERJS (NETWORKING & VOICE) --- */
+        /* --- 4. PEERJS (MULTIPLAYER, CHAT & VOICE) --- */
         let peer = null;
         let dataConn = null;
+        let myMicStream = null;
 
-        document.getElementById('start-btn').addEventListener('click', () => {
-            const targetId = document.getElementById('target-peer-id').value.trim();
-            document.getElementById('lobby-modal').style.display = 'none';
+        document.getElementById('start-game').onclick = () => {
+            const color = document.getElementById('char-color').value;
+            const targetId = document.getElementById('partner-id').value.trim();
+            document.getElementById('lobby').style.display = 'none';
 
-            loadAnimatedCharacter((charData) => {
-                playerCharacter = charData;
-                document.getElementById('loading-overlay').style.display = 'none';
+            myPlayer = buildAvatar(color);
 
-                // Initialize WebRTC
-                peer = new Peer();
-                peer.on('open', (id) => {
-                    document.getElementById('my-peer-id').innerText = id;
-                    if(targetId) {
-                        dataConn = peer.connect(targetId);
-                        setupConnection();
-                    }
-                });
+            peer = new Peer();
+            peer.on('open', (id) => {
+                document.getElementById('my-id').innerText = id;
+                if(targetId) {
+                    dataConn = peer.connect(targetId);
+                    bindDataEvents();
+                }
+            });
 
-                peer.on('connection', (conn) => {
-                    dataConn = conn;
-                    setupConnection();
-                });
+            peer.on('connection', (conn) => {
+                dataConn = conn;
+                bindDataEvents();
+            });
 
-                peer.on('call', (call) => {
-                    navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
-                        call.answer(stream);
-                        call.on('stream', (remoteStream) => {
-                            document.getElementById('remote-audio').srcObject = remoteStream;
-                        });
-                    });
+            peer.on('call', (call) => {
+                navigator.mediaDevices.getUserMedia({ audio: true }).then((st) => {
+                    call.answer(st);
+                    call.on('stream', (rSt) => { document.getElementById('peer-audio').srcObject = rSt; });
                 });
             });
-        });
+        };
 
-        function setupConnection() {
+        function bindDataEvents() {
             dataConn.on('open', () => {
-                document.getElementById('conn-status').innerText = "Player Connected";
-                document.getElementById('conn-status').style.color = "#38bdf8";
-                addChatMessage("System", "Another player joined world!");
+                document.getElementById('room-status').innerText = "Friend Joined!";
+                postChat("System", "Partner connected successfully!");
             });
-
-            dataConn.on('data', (data) => {
-                if(data.type === 'sync') {
-                    if(!remoteCharacter) {
-                        loadAnimatedCharacter((rChar) => {
-                            remoteCharacter = rChar;
-                            remoteCharacter.mesh.position.set(data.x, data.y, data.z);
-                        });
-                        return;
-                    }
-                    remoteCharacter.mesh.position.set(data.x, data.y, data.z);
-                    remoteCharacter.mesh.rotation.y = data.rotY;
-                    remoteCharacter.setAction(data.anim);
-                } else if(data.type === 'chat') {
-                    addChatMessage("Friend", data.msg);
-                } else if(data.type === 'interaction') {
-                    isHoldingHands = data.holding;
-                    if(remoteCharacter) remoteCharacter.setAction(data.holding ? 'emote' : 'idle');
-                    addChatMessage("Interaction", data.holding ? "Friend activated couple pose!" : "Interaction ended.");
+            dataConn.on('data', (d) => {
+                if(d.type === 'sync') {
+                    if(!peerPlayer) peerPlayer = buildAvatar(0x10b981);
+                    peerPlayer.position.set(d.x, d.y, d.z);
+                    peerPlayer.rotation.y = d.rotY;
+                } else if(d.type === 'hand') {
+                    isHoldingHands = d.state;
+                    postChat("Interaction", isHoldingHands ? "🤝 Hand holding started!" : "Hands released.");
+                } else if(d.type === 'kiss') {
+                    isKissing = d.state;
+                    if(peerPlayer) peerPlayer.userData.heart.visible = isKissing;
+                    postChat("Interaction", isKissing ? "💋 Kiss pose started!" : "Kiss ended.");
+                } else if(d.type === 'msg') {
+                    postChat("Friend", d.text);
                 }
             });
         }
 
-        // Voice chat toggle
-        document.getElementById('mic-btn').addEventListener('click', async () => {
+        function sendP2P(data) {
+            if(dataConn && dataConn.open) dataConn.send(data);
+        }
+
+        // Voice button
+        document.getElementById('voice-btn').onclick = async () => {
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                document.getElementById('mic-btn').style.background = '#22c55e';
-                document.getElementById('mic-btn').innerText = '🎤 Voice Connected';
+                myMicStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                document.getElementById('voice-btn').style.background = '#22c55e';
+                document.getElementById('voice-btn').innerText = '🎤 Voice On';
                 if(dataConn && dataConn.peer) {
-                    const call = peer.call(dataConn.peer, stream);
-                    call.on('stream', (remoteStream) => {
-                        document.getElementById('remote-audio').srcObject = remoteStream;
-                    });
+                    const call = peer.call(dataConn.peer, myMicStream);
+                    call.on('stream', (rSt) => { document.getElementById('peer-audio').srcObject = rSt; });
                 }
-            } catch(e) {
-                alert("Microphone permission denied.");
-            }
-        });
+            } catch(e) { alert("Microphone access denied!"); }
+        };
 
-        /* --- 6. CHAT LOGIC --- */
-        function addChatMessage(user, msg) {
-            const box = document.getElementById('chat-messages');
-            const elem = document.createElement('div');
-            elem.innerHTML = `<b>${user}:</b> ${msg}`;
-            box.appendChild(elem);
-            box.scrollTop = box.scrollHeight;
+        // Chat
+        function postChat(usr, txt) {
+            const logs = document.getElementById('chat-logs');
+            logs.innerHTML += `<div><b>${usr}:</b> ${txt}</div>`;
+            logs.scrollTop = logs.scrollHeight;
         }
+        document.getElementById('chat-btn').onclick = () => {
+            const inp = document.getElementById('chat-msg');
+            if(!inp.value.trim()) return;
+            postChat("Me", inp.value);
+            sendP2P({ type: 'msg', text: inp.value });
+            inp.value = '';
+        };
 
-        document.getElementById('chat-send').addEventListener('click', sendMsg);
-        document.getElementById('chat-input').addEventListener('keydown', (e) => { if(e.key === 'Enter') sendMsg(); });
-
-        function sendMsg() {
-            const input = document.getElementById('chat-input');
-            const text = input.value.trim();
-            if(!text) return;
-            addChatMessage("You", text);
-            if(dataConn && dataConn.open) {
-                dataConn.send({ type: 'chat', msg: text });
-            }
-            input.value = '';
-        }
-
-        /* --- 7. RENDER LOOP --- */
-        let lastTime = performance.now();
-        function animate() {
-            requestAnimationFrame(animate);
+        /* --- 5. RENDER LOOP --- */
+        let prevTime = performance.now();
+        function loop() {
+            requestAnimationFrame(loop);
             const now = performance.now();
-            const delta = (now - lastTime) / 1000;
-            lastTime = now;
+            const delta = (now - prevTime) / 1000;
+            prevTime = now;
 
-            updatePlayer(delta);
+            handleMovement(delta);
 
-            // Sync position & animation action over P2P
-            if (playerCharacter && dataConn && dataConn.open) {
-                let currentAnimName = 'idle';
-                for (let key in playerCharacter.actions) {
-                    if (playerCharacter.actions[key] === playerCharacter.currentAction) {
-                        currentAnimName = key;
-                        break;
-                    }
-                }
-                dataConn.send({
+            if(myPlayer && dataConn && dataConn.open) {
+                sendP2P({
                     type: 'sync',
-                    x: playerCharacter.mesh.position.x,
-                    y: playerCharacter.mesh.position.y,
-                    z: playerCharacter.mesh.position.z,
-                    rotY: playerCharacter.mesh.rotation.y,
-                    anim: currentAnimName
+                    x: myPlayer.position.x,
+                    y: myPlayer.position.y,
+                    z: myPlayer.position.z,
+                    rotY: myPlayer.rotation.y
                 });
             }
 
             renderer.render(scene, camera);
         }
-        animate();
+        loop();
 
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
@@ -531,4 +449,3 @@
     </script>
 </body>
 </html>
-
